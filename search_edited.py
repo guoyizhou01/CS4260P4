@@ -18,18 +18,28 @@ TempStorage = ""
 """
 
 
+def convert_scale(number)：
+    if number == 0:
+        return 5
+    elif number == 1:
+        return 7
+    elif number == 2:
+        return 9
+    else:
+        return 10
 
-
-def time_at_location(locations,preferences,init_pref,prev_pref):
-    day_n_preference = max((day_n-1_preference + initial_preference)/2 - day_n-1_visit_number**2, 0)
-    pref_list = []
-    for i in range(len(preferences)):
-        pref_list.append(max( (init_pref+prev_pref)/2 - locations[preferences[i]] **2   ,0 )   )
+def time_at_location(location,init_pref,prev_pref):
+    # day_n_preference = max((day_n-1_preference + initial_preference)/2 - day_n-1_visit_number**2, 0)
+    new_pref_list = []
+    calculate_pref = []
+    for i in range(len(init_pref)):
+        new_pref_list.append([init_pref[i][0], max( (init_pref[i][1]+prev_pref[i][1])/2 - (location.get_theme(init_pref[i][0]) ** 1.5)   ,0 )  ] )
+        calculate_pref.append(sqrt(prev_pref[i][1] * convert_scale(locations.get_theme(prev_pref[i][0])) ))
     while (len(pref_list) < 10):
-        pref_list.append(5)
-    prediction = predict(prev_pref)
+        new_pref_list.append(5)
+    prediction = predict(calculate_pref)
     prev_pref = pref_list
-    return prediction
+    return 2 * prediction
 
 def distance(locationA, locationB):
     return (math.sqrt(((locationA.latitude - locationB.latitude) * 69) ** 2 \
@@ -39,21 +49,22 @@ def total_preference(roadtrip, locations, edges):
 	total_pref = 0.000
 
 	# Add up the preferences of the locations
-	for loc in roadtrip:
-		total_pref += locations[loc].preference
+	for line in roadtrip:
+        for i in range(len(line-1)):
+            total_pref += locations[line[i]].preference
 
 	# Add up the preferences of the edges
-	for i in range(len(roadtrip) - 1):
-		current_loc, next_loc = roadtrip[i], roadtrip[i + 1]
+	# for i in range(len(roadtrip) - 1):
+	# 	current_loc, next_loc = roadtrip[i], roadtrip[i + 1]
 
-		# Find the correct edge and add its preference
-		for edge in edges[current_loc]:
-			if edge.other_city(current_loc) == next_loc:
-				total_pref += edge.preference
-				break
+	# 	# Find the correct edge and add its preference
+	# 	for edge in edges[current_loc]:
+	# 		if edge.other_city(current_loc) == next_loc:
+	# 			total_pref += edge.preference
+	# 			break
 
 	# Since this is a round-trip, the start location only have one preference value
-	total_pref = total_pref - locations[roadtrip[0]].preference
+	# total_pref = total_pref - locations[roadtrip[0]].preference
 	return total_pref
 
 
@@ -82,7 +93,11 @@ def time_estimate(roadtrip, locations, edges):
 	total_time = total_time - time_at_location(locations[roadtrip[0]].preference)
 	return total_time
 
-
+def is_in_matrix(matrix,a):
+    for vec in matrix:
+        if a in vec[1:]:
+            return True
+    return False
 
 
 def route_search(startLoc, locations, edges, days, drivingHour, x_mph, preferences, resultFile):
@@ -96,12 +111,14 @@ def route_search(startLoc, locations, edges, days, drivingHour, x_mph, preferenc
     if not (startLoc in locations.keys()):
         print('ERROR: Start location not recognized')
         exit()
+    if len(curr_visit) > days:
+        continue
     
     # frontier: prioity queue of tuple (eval_score,list of list of locations traveled by day (duplicate location if in two days),
-    #                                             list of distance_traveled by day,total preference score)
+    #                                             list of hours by day,total preference score)
     # eval_score: total preference (location + edge) / time used 
     # miles_traveled need to be calculated manually from list of locations
-    frontier = [(0, [[startLoc]], [0], 0)]
+    frontier = [(0, [[startLoc]], [0], [0])]
     heapq.heapify(frontier)
     # goalness: dictionary, key = city name, value = maximum eval_score
     # goalness = dict()
@@ -112,20 +129,21 @@ def route_search(startLoc, locations, edges, days, drivingHour, x_mph, preferenc
     while len(frontier) > 0:
         # get info from first one in queue and remove it
         curr_visit = frontier[0][1]
-        curr_loc = curr_visit[-1]
+        curr_day = curr_visit[-1]
+        curr_loc = curr_day[-1]
         curr_eval_score = frontier[0][0]
-        curr_miles = frontier[0][2]
-        curr_hours = frontier[0][3]
+        curr_miles = frontier[0][2][-1]
+        curr_hours = frontier[0][3][-1]
 
 
         heapq.heappop(frontier)
-        #print(curr_visit,curr_hours)
+
 
 
         # TODO: check if a valid path is found and check user prompt for anytime search
         # TODO: Modify output!
 
-        if curr_loc == startLoc and len(curr_visit) > 1:
+        if curr_loc == startLoc and len(curr_visit[0]) > 1:
             Solution_Label += 1
 
             # Do the standard format Output
@@ -135,36 +153,36 @@ def route_search(startLoc, locations, edges, days, drivingHour, x_mph, preferenc
             tempEdgeLength = []
             pathCost = 0
 
-            file.write("Solution label: {}  ".format(Solution_Label) + "{}  ".format(curr_visit[0]) + "{:.1f}  ".format(maxTime) + "{:.1f}\n".format(x_mph))
-            print("Solution label: {}  ".format(Solution_Label) + "{}  ".format(curr_visit[0]) + "{:.1f}  ".format(maxTime) + "{:.1f}".format(x_mph))
-            i = 0
-            while i < len(curr_visit) - 1:
-                avail_edges = edges[curr_visit[i]]
-                for a in avail_edges:
-                    if curr_visit[i + 1] == (a.other_city(curr_visit[i])):
+            file.write("Solution label: {}  {}  max_days:{}  max_hours_per_day:{}  mph:{}\n".format(Solution_Label,curr_visit[0][0],days,drivingHour,x_mph))
+            print("Solution label: {}  {}  max_days:{}  max_hours_per_day:{}  mph:{}".format(Solution_Label,curr_visit[0][0],days,drivingHour,x_mph))
+            day = 0
+            while day < len(curr_visit):
+                day = day + 1
+                i = 0
+                file.write("  Day %d:"%day)
+                while i < len(curr_visit[day-1]) - 1:
+                    avail_edges = edges[curr_visit[day-1][i]]
+                    for a in avail_edges:
+                        if curr_visit[day-1][i + 1] == (a.other_city(curr_visit[day-1][i])):
 
 
-                        tempEdgeLength.append(a)
-                        tempEdgeName.append(a)
+                            tempEdgeLength.append(a)
+                            tempEdgeName.append(a)
 
-                        pathCost += a.length
-                        loc = distance(locations[curr_visit[i+1]],locations[curr_visit[-1]])
+                            pathCost += a.length
+                            # loc = distance(locations[curr_visit[day-1][i+1]],locations[curr_visit[day-1][-1]])
 
-                        file.write("{}.".format(i + 1) + " {:<15}".format(curr_visit[i]) + " {:<15}".format(curr_visit[i+1]) + " {:<40}".format(
-                            a.name) + " {:>5.3f}".format(
-                            a.preference) + "{:>5.1f}hours".format((a.length/x_mph)+ time_at_location(a.preference))+
-                            "  {:>5.3f}".format(locations[curr_visit[i+1]].preference) + " {:>5.1f}hours\n".format(time_at_location(locations[curr_visit[i+1]].preference)))
-                        print("{}.".format(i + 1) + " {:<15}".format(curr_visit[i]) + " {:<15}".format(curr_visit[i+1]) + " {:<40}".format(
-                            a.name) + " {:>5.3f}".format(
-                            a.preference) + "{:>5.1f}hours".format((a.length/x_mph)+ time_at_location(a.preference))+
-                            "  {:>5.3f}".format(locations[curr_visit[i+1]].preference) + " {:>5.1f}hours".format(time_at_location(locations[curr_visit[i+1]].preference)))
-                i += 1
+                            file.write("  {}  {:<15} {:<15} {:<40}  {:>5.3f} {:>5.1f}hours  {:>5.3f} {:>5.1f}hours\n".format(i+1,curr_visit[day-1][i],curr_visit[day-1][i+1],a.name,\
+                                a.preference,(a.length/x_mph),locations[curr_visit[day-1][i+1]].preference,time_at_location(locations[curr_visit[day-1][i+1]].preference)))
+                            print("  {}  {:<15} {:<15} {:<40}  {:>5.3f} {:>5.1f}hours  {:>5.3f} {:>5.1f}hours".format(i+1,curr_visit[day-1][i],curr_visit[day-1][i+1],a.name,\
+                                a.preference,(a.length/x_mph),locations[curr_visit[day-1][i+1]].preference,time_at_location(locations[curr_visit[day-1][i+1]].preference)))
+                            break
+                    i += 1
             totalPreference = total_preference(curr_visit, locations, edges)
             totalTimeCost = time_estimate(curr_visit, locations, edges)
-            file.write("{}  ".format(curr_visit[0]) + "{:.3f}  ".format(totalPreference) + "{:.1f}miles  ".format(pathCost) + "{:.1f}hours".format(totalTimeCost) + "\n")
-            print("{}  ".format(curr_visit[0]) + "{:.3f}  ".format(totalPreference) + "{:.1f}miles  ".format(pathCost) + "{:.1f}hours".format(totalTimeCost) + "\n")
+            file.write("{}  {:.3f}  {:.1f}miles  {:.1f}hours\n".format(curr_visit[0],totalPreference,pathCost,totalTimeCost))
+            print("{}  {:.3f}  {:.1f}miles  {:.1f}hours".format(curr_visit[0],totalPreference,pathCost,totalTimeCost))
 
-            # *****WARNING***** FOR TEST PURPOSE ONLY, WILL EVENTUALLY BE
             # user_start_time = time.time()
             UserInput = input("Do you want to find a alternate route? Y/N \n")
             # user_end_time = time.time()
@@ -182,15 +200,14 @@ def route_search(startLoc, locations, edges, days, drivingHour, x_mph, preferenc
         # *****************************************************************************
         # ** Here we choose to require a road trip visit any location at most once   **
         # *****************************************************************************
-        if curr_visit.index(curr_loc) != len(curr_visit)-1:
+        if is_in_matrix(curr_visit,curr_loc):
             continue
 
-        # see if we went too far and can't go home on time (to take the next AI class)
+        # see if we went too far and can't go home on time
         # The restriant is lenient. It is possible to reduce branches furthermore,
         # but it need longer time to search a return route every time a branch is created
         # and probably would exceed the running time reduced from cutting branches
-        if distance(locations[curr_loc],locations[startLoc]) / x_mph + curr_hours > maxTime:
-            continue
+        
 
         # get edges from the location
         if not (curr_loc in edges.keys()):
@@ -203,7 +220,7 @@ def route_search(startLoc, locations, edges, days, drivingHour, x_mph, preferenc
 
         for edge in avail_edges:
             new_loc = edge.other_city(curr_loc)
-            new_miles = curr_miles + edge.length
+            new_miles = curr_miles[-1] + edge.length
             new_edge_time = edge.length / x_mph + time_at_location(edge.preference)
             new_loc_time = time_at_location(locations[new_loc].preference)
             new_hours = curr_hours + new_edge_time + new_loc_time

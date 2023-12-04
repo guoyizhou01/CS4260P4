@@ -140,12 +140,6 @@ def read_edges(EdgeFile):
 
 			if all_edges.get(curr_edge_1.cityA) == None:
 				all_edges[curr_edge_1.cityA] = []
-			duplicateLine = False
-			for edge in all_edges.get(curr_edge_1.cityA):
-				if edge.other_city(curr_edge_1.cityA) == curr_edge_1.cityB:
-					duplicateLine = True
-			if duplicateLine:
-				continue
 			if curr_edge_1 in all_edges[curr_edge_1.cityA]:
 				print('ERROR: Duplicate Edge')
 			else:

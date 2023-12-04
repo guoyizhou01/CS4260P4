@@ -51,7 +51,7 @@ if __name__ == '__main__':
 			if single.strip().lower() == 'stop':
 				stopLoop = True
 				break
-			preferences.append(single.strip()) 
+			preferences.append([single.strip(),10]) 
 
 	RoadTrip(startLoc, LocFile, EdgeFile, AttrFile, days, drivingHour, x_mph, preferences, resultFile)
 
