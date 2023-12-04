@@ -2,6 +2,8 @@ import heapq
 import math
 import time
 import utility
+import predict_model.weights_to_prediction as predict
+import copy
 
 DIST_COEFF = 1.0
 RouteDistance = []
@@ -15,8 +17,19 @@ TempStorage = ""
 1 degree longitude = 54.6 miles
 """
 
-def time_at_location(v_loc):
-    return (2*v_loc)**2
+
+
+
+def time_at_location(locations,preferences,init_pref,prev_pref):
+    day_n_preference = max((day_n-1_preference + initial_preference)/2 - day_n-1_visit_number**2, 0)
+    pref_list = []
+    for i in range(len(preferences)):
+        pref_list.append(max( (init_pref+prev_pref)/2 - locations[preferences[i]] **2   ,0 )   )
+    while (len(pref_list) < 10):
+        pref_list.append(5)
+    prediction = predict(prev_pref)
+    prev_pref = pref_list
+    return prediction
 
 def distance(locationA, locationB):
     return (math.sqrt(((locationA.latitude - locationB.latitude) * 69) ** 2 \
@@ -73,18 +86,22 @@ def time_estimate(roadtrip, locations, edges):
 
 
 def route_search(startLoc, locations, edges, days, drivingHour, x_mph, preferences, resultFile):
+    while (len(preferences) < 10):
+        prefences.append(5)
+    initial_preference = copy.deepcopy(preferences)
+    prev_day_preference = preferences
     #start_time = time.time()
     file = open(resultFile, 'w')
     # check validity
     if not (startLoc in locations.keys()):
         print('ERROR: Start location not recognized')
         exit()
-
-    # frontier: prioity queue of tuple (eval_score,list of locations traveled,
-    #                                             distance_traveled,total preference score, last visited themes)
+    
+    # frontier: prioity queue of tuple (eval_score,list of list of locations traveled by day (duplicate location if in two days),
+    #                                             list of distance_traveled by day,total preference score)
     # eval_score: total preference (location + edge) / time used 
     # miles_traveled need to be calculated manually from list of locations
-    frontier = [(0, [startLoc], 0, 0,[[],[],[]])]
+    frontier = [(0, [[startLoc]], [0], 0)]
     heapq.heapify(frontier)
     # goalness: dictionary, key = city name, value = maximum eval_score
     # goalness = dict()
