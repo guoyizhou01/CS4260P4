@@ -29,6 +29,12 @@ class Location:
 			self.themes[theme] = 0
 		self.themes[theme] = self.themes[theme] + 1
 
+	def get_theme(self,theme):
+		if not (theme in self.themes.keys()):
+			return 0
+		return themes[theme]
+
+
 class Edge:
 	def __init__(self,name,cityA,cityB,length):
 		self.name = name
@@ -58,6 +64,11 @@ class Edge:
 		print('ERROR: input city not in edge')
 		return 'ERROR'
 
+
+
+
+
+
 def read_attr(AttrFile,all_locations):
 
 	with open(AttrFile, mode ='r') as file:
@@ -72,7 +83,7 @@ def read_attr(AttrFile,all_locations):
 			if not (lines[1].strip() in all_locations.keys()):
 				continue
 			for theme in lines[3].strip().split(','):
-				all_locations[lines[1].strip()].add_theme(theme.strip())
+				all_locations[lines[1].strip()].add_theme(theme.strip().replace(" ",""))
 	return all_locations
 
 
