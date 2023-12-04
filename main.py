@@ -43,11 +43,16 @@ if __name__ == '__main__':
 	x_mph = input('Please enter your expected driving speed: ').strip()
 
 	preferences = []
-	while len(preferences) < 5:
-		curr_pref = input('Please enter your theme preference (%d/5 entered): '%len(preferences))
+	while len(preferences) < 10:
+		curr_pref = input('Please enter your theme preference (%d/10 entered), enter stop to auto-fill the rest: '%len(preferences))
 		curr_pref = curr_pref.strip().split()
-		preferences = preferences + curr_pref
-	
+		stopLoop = False
+		for single in curr_pref:
+			if single.strip().lower() == 'stop':
+				stopLoop = True
+				break
+			preferences.append(single.strip()) 
+
 	RoadTrip(startLoc, LocFile, EdgeFile, AttrFile, days, drivingHour, x_mph, preferences, resultFile)
 
 
