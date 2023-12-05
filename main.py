@@ -25,11 +25,11 @@ Edge class object: edge name, city A, city B, length
 def RoadTrip(startLoc, LocFile, EdgeFile, AttrFile, days, drivingHour, x_mph, preferences, resultFile):
 	locations = utility.read_locations(LocFile)
 	edges =	utility.read_edges(EdgeFile)
-	utility.read_attr(AttrFile)
+	utility.read_attr(AttrFile,locations)
 	search.route_search(startLoc, locations, edges, days, drivingHour, x_mph, preferences, resultFile)
 
 if __name__ == '__main__':
-	if (len(sys.argv < 5)):
+	if (len(sys.argv) < 5):
 		print('Usage: main.py LocationFile EdgeFile OutputFile StartLocation')
 		exit(1)
 
@@ -38,20 +38,24 @@ if __name__ == '__main__':
 	resultFile = sys.argv[3].strip()
 	startLoc = sys.argv[4].strip()
 	AttrFile = 'attractions.csv'
-	days = input('Please enter days of roadtrip: ').strip()
-	drivingHour = input('Please enter maximum driving hours per day: ').strip()
-	x_mph = input('Please enter your expected driving speed: ').strip()
+	days = int(input('Please enter days of roadtrip: ').strip())
+	drivingHour = int(input('Please enter maximum driving hours per day: ').strip())
+	x_mph = int(input('Please enter your expected driving speed: ').strip())
 
 	preferences = []
 	while len(preferences) < 10:
 		curr_pref = input('Please enter your theme preference (%d/10 entered), enter stop to auto-fill the rest: '%len(preferences))
 		curr_pref = curr_pref.strip().split()
 		stopLoop = False
+		i = 0
 		for single in curr_pref:
 			if single.strip().lower() == 'stop':
 				stopLoop = True
 				break
-			preferences.append([single.strip(),10]) 
+			preferences.append([single.strip(),10-i//2]) 
+		if stopLoop:
+			break
+	print(preferences)
 
 	RoadTrip(startLoc, LocFile, EdgeFile, AttrFile, days, drivingHour, x_mph, preferences, resultFile)
 
