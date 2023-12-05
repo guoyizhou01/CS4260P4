@@ -68,7 +68,7 @@ class Edge:
 
 
 
-
+# read attributes into locations
 def read_attr(AttrFile,all_locations):
 
 	with open(AttrFile, mode ='r') as file:
@@ -86,7 +86,7 @@ def read_attr(AttrFile,all_locations):
 				all_locations[lines[1].strip()].add_theme(theme.strip().lower().replace(" ",""))
 	return all_locations
 
-
+# read locations
 def read_locations(LocFile):
 
 	all_locations = dict()
@@ -115,7 +115,7 @@ def read_locations(LocFile):
 
 	return all_locations
 
-
+# read edges
 def read_edges(EdgeFile):
 
 	all_edges = dict()
@@ -157,6 +157,7 @@ def read_edges(EdgeFile):
 
 	return all_edges
 
+# basic testing
 if __name__ == '__main__':
 	all_locations = read_locations('Locations_small.csv')
 	all_edges = read_edges('Edges_small.csv')
