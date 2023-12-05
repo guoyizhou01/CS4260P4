@@ -2,7 +2,7 @@ import heapq
 import math
 import time
 import utility
-import predict_model.weights_to_prediction as predict
+import predict_model
 import copy
 
 DIST_COEFF = 1.0
@@ -18,13 +18,13 @@ TempStorage = ""
 """
 
 
-def convert_scale(number)：
+def convert_scale(number):
     if number == 0:
-        return 5
+        return 3
     elif number == 1:
-        return 7
+        return 6
     elif number == 2:
-        return 9
+        return 8
     else:
         return 10
 
@@ -33,39 +33,42 @@ def time_at_location(location,init_pref,prev_pref):
     new_pref_list = []
     calculate_pref = []
     for i in range(len(init_pref)):
+        # print(init_pref[i][1],prev_pref[i][1])
         new_pref_list.append([init_pref[i][0], max( (init_pref[i][1]+prev_pref[i][1])/2 - (location.get_theme(init_pref[i][0]) ** 1.5)   ,0 )  ] )
-        calculate_pref.append(sqrt(prev_pref[i][1] * convert_scale(locations.get_theme(prev_pref[i][0])) ))
-    while (len(pref_list) < 10):
-        new_pref_list.append(5)
-    prediction = predict(calculate_pref)
-    prev_pref = pref_list
-    return 2 * prediction
+        calculate_pref.append(math.sqrt(prev_pref[i][1] * convert_scale(location.get_theme(prev_pref[i][0])) ))
+    while (len(new_pref_list) < 10):
+        new_pref_list.append(3)
+
+    prediction = predict_model.weights_to_prediction(calculate_pref)
+    # print(calculate_pref,prediction)
+    prev_pref = new_pref_list
+    return (prediction ** 2)*2
 
 def distance(locationA, locationB):
     return (math.sqrt(((locationA.latitude - locationB.latitude) * 69) ** 2 \
                       + ((locationA.longitude - locationB.longitude) * 54.6) ** 2)) * DIST_COEFF
 
 def total_preference(roadtrip, locations, edges):
-	total_pref = 0.000
+    total_pref = 0.000
 
-	# Add up the preferences of the locations
-	for line in roadtrip:
+    # Add up the preferences of the locations
+    for line in roadtrip:
         for i in range(len(line-1)):
             total_pref += locations[line[i]].preference
 
-	# Add up the preferences of the edges
-	# for i in range(len(roadtrip) - 1):
-	# 	current_loc, next_loc = roadtrip[i], roadtrip[i + 1]
+    # Add up the preferences of the edges
+    # for i in range(len(roadtrip) - 1):
+    # 	current_loc, next_loc = roadtrip[i], roadtrip[i + 1]
 
-	# 	# Find the correct edge and add its preference
-	# 	for edge in edges[current_loc]:
-	# 		if edge.other_city(current_loc) == next_loc:
-	# 			total_pref += edge.preference
-	# 			break
+    # 	# Find the correct edge and add its preference
+    # 	for edge in edges[current_loc]:
+    # 		if edge.other_city(current_loc) == next_loc:
+    # 			total_pref += edge.preference
+    # 			break
 
-	# Since this is a round-trip, the start location only have one preference value
-	# total_pref = total_pref - locations[roadtrip[0]].preference
-	return total_pref
+    # Since this is a round-trip, the start location only have one preference value
+    # total_pref = total_pref - locations[roadtrip[0]].preference
+    return total_pref
 
 
 def time_estimate(roadtrip, locations, edges):
@@ -94,31 +97,32 @@ def time_estimate(roadtrip, locations, edges):
 	return total_time
 
 def is_in_matrix(matrix,a):
+    count = 0
     for vec in matrix:
-        if a in vec[1:]:
-            return True
-    return False
+        for loc in vec:
+            if a == loc:
+                ++count
+    return count > 1
 
 
 def route_search(startLoc, locations, edges, days, drivingHour, x_mph, preferences, resultFile):
     while (len(preferences) < 10):
         prefences.append(5)
-    initial_preference = copy.deepcopy(preferences)
-    prev_day_preference = preferences
+    init_pref = copy.deepcopy(preferences)
+    prev_day_preference = copy.deepcopy(preferences)
     #start_time = time.time()
     file = open(resultFile, 'w')
     # check validity
     if not (startLoc in locations.keys()):
         print('ERROR: Start location not recognized')
         exit()
-    if len(curr_visit) > days:
-        continue
+    time_at_loc_dict = dict()
     
     # frontier: prioity queue of tuple (eval_score,list of list of locations traveled by day (duplicate location if in two days),
     #                                             list of hours by day,total preference score)
     # eval_score: total preference (location + edge) / time used 
     # miles_traveled need to be calculated manually from list of locations
-    frontier = [(0, [[startLoc]], [0], [0])]
+    frontier = [(0, [[startLoc]], [0], [0],prev_day_preference,[startLoc])]
     heapq.heapify(frontier)
     # goalness: dictionary, key = city name, value = maximum eval_score
     # goalness = dict()
@@ -127,25 +131,33 @@ def route_search(startLoc, locations, edges, days, drivingHour, x_mph, preferenc
     #sumUserTime = 0
 
     while len(frontier) > 0:
+        # print(frontier[0][1])
         # get info from first one in queue and remove it
-        curr_visit = frontier[0][1]
-        curr_day = curr_visit[-1]
-        curr_loc = curr_day[-1]
-        curr_eval_score = frontier[0][0]
-        curr_miles = frontier[0][2][-1]
-        curr_hours = frontier[0][3][-1]
+        curr_visit = copy.deepcopy(frontier[0][1])
+        curr_day = copy.deepcopy(curr_visit[-1])
+        curr_loc = copy.deepcopy(curr_day[-1])
+        curr_eval_score = copy.deepcopy(frontier[0][0])
+        curr_miles = copy.deepcopy(frontier[0][2][-1])
+        all_miles = copy.deepcopy(frontier[0][2])
+        curr_hours = copy.deepcopy(frontier[0][3][-1])
+        all_hours = copy.deepcopy(frontier[0][3])
+        prev_pref = copy.deepcopy(frontier[0][4])
+        visited = copy.deepcopy(frontier[0][5])
 
 
         heapq.heappop(frontier)
-
+        if len(curr_visit) > days:
+            continue
 
 
         # TODO: check if a valid path is found and check user prompt for anytime search
         # TODO: Modify output!
 
         if curr_loc == startLoc and len(curr_visit[0]) > 1:
+            if len(curr_visit) < max(days/2,days-2) or sum(all_hours) < days*drivingHour*0.7:
+                continue
             Solution_Label += 1
-
+            prev_pref = init_pref
             # Do the standard format Output
             RouteDistance.append(curr_eval_score)
 
@@ -153,13 +165,16 @@ def route_search(startLoc, locations, edges, days, drivingHour, x_mph, preferenc
             tempEdgeLength = []
             pathCost = 0
 
+            totalTimeCost = 0
+
             file.write("Solution label: {}  {}  max_days:{}  max_hours_per_day:{}  mph:{}\n".format(Solution_Label,curr_visit[0][0],days,drivingHour,x_mph))
             print("Solution label: {}  {}  max_days:{}  max_hours_per_day:{}  mph:{}".format(Solution_Label,curr_visit[0][0],days,drivingHour,x_mph))
             day = 0
             while day < len(curr_visit):
                 day = day + 1
                 i = 0
-                file.write("  Day %d:"%day)
+                file.write("  Day %d:\n"%day)
+                print("  Day %d:"%day)
                 while i < len(curr_visit[day-1]) - 1:
                     avail_edges = edges[curr_visit[day-1][i]]
                     for a in avail_edges:
@@ -171,17 +186,19 @@ def route_search(startLoc, locations, edges, days, drivingHour, x_mph, preferenc
 
                             pathCost += a.length
                             # loc = distance(locations[curr_visit[day-1][i+1]],locations[curr_visit[day-1][-1]])
-
-                            file.write("  {}  {:<15} {:<15} {:<40}  {:>5.3f} {:>5.1f}hours  {:>5.3f} {:>5.1f}hours\n".format(i+1,curr_visit[day-1][i],curr_visit[day-1][i+1],a.name,\
-                                a.preference,(a.length/x_mph),locations[curr_visit[day-1][i+1]].preference,time_at_location(locations[curr_visit[day-1][i+1]].preference)))
-                            print("  {}  {:<15} {:<15} {:<40}  {:>5.3f} {:>5.1f}hours  {:>5.3f} {:>5.1f}hours".format(i+1,curr_visit[day-1][i],curr_visit[day-1][i+1],a.name,\
-                                a.preference,(a.length/x_mph),locations[curr_visit[day-1][i+1]].preference,time_at_location(locations[curr_visit[day-1][i+1]].preference)))
+                            loc_time = time_at_location(locations[curr_visit[day-1][i+1]],init_pref,prev_pref)
+                            file.write("    {}  {:<15} {:<15} {:<50}   {:>5.2f}hours  {:>5.2f}hours\n".format(i+1,curr_visit[day-1][i],curr_visit[day-1][i+1],a.name,\
+                                (a.length/x_mph),loc_time))
+                            print("    {}  {:<15} {:<15} {:<50}   {:>5.2f}hours  {:>5.2f}hours".format(i+1,curr_visit[day-1][i],curr_visit[day-1][i+1],a.name,\
+                                (a.length/x_mph),loc_time))
+                            totalTimeCost += (a.length/x_mph)+loc_time
                             break
                     i += 1
-            totalPreference = total_preference(curr_visit, locations, edges)
-            totalTimeCost = time_estimate(curr_visit, locations, edges)
-            file.write("{}  {:.3f}  {:.1f}miles  {:.1f}hours\n".format(curr_visit[0],totalPreference,pathCost,totalTimeCost))
-            print("{}  {:.3f}  {:.1f}miles  {:.1f}hours".format(curr_visit[0],totalPreference,pathCost,totalTimeCost))
+            
+            # totalPreference = total_preference(curr_visit, locations, edges)
+            # totalTimeCost = time_estimate(curr_visit, locations, edges)
+            file.write("{}  {:.1f}miles  {} days  {:.2f}hours\n".format(curr_visit[0],pathCost,len(curr_visit),totalTimeCost))
+            print("{}  {:.1f}miles  {} days  {:.2f}hours".format(curr_visit[0],pathCost,len(curr_visit),totalTimeCost))
 
             # user_start_time = time.time()
             UserInput = input("Do you want to find a alternate route? Y/N \n")
@@ -200,7 +217,9 @@ def route_search(startLoc, locations, edges, days, drivingHour, x_mph, preferenc
         # *****************************************************************************
         # ** Here we choose to require a road trip visit any location at most once   **
         # *****************************************************************************
-        if is_in_matrix(curr_visit,curr_loc):
+        # if is_in_matrix(curr_visit,curr_loc):
+        #     continue
+        if visited.index(curr_loc) != len(visited)-1:
             continue
 
         # see if we went too far and can't go home on time
@@ -219,16 +238,30 @@ def route_search(startLoc, locations, edges, days, drivingHour, x_mph, preferenc
         next_visits = []
 
         for edge in avail_edges:
+            new_prev_pref = copy.deepcopy(prev_pref)
             new_loc = edge.other_city(curr_loc)
-            new_miles = curr_miles[-1] + edge.length
-            new_edge_time = edge.length / x_mph + time_at_location(edge.preference)
-            new_loc_time = time_at_location(locations[new_loc].preference)
-            new_hours = curr_hours + new_edge_time + new_loc_time
-            curr_preference = curr_eval_score * curr_hours
+            # if new_loc in visited:
+            #     continue
+            new_edge_time = edge.length / x_mph
+            new_loc_time = time_at_location(locations[new_loc],init_pref,new_prev_pref)
+            new_all_hours = copy.deepcopy(all_hours)
+            new_all_miles = copy.deepcopy(all_miles)
+            new_all_visit = copy.deepcopy(curr_visit)
+            new_visited = copy.deepcopy(visited)
+            new_visited.append(new_loc)
+            if new_edge_time + new_loc_time + curr_hours > drivingHour:
+                new_all_visit.append([curr_loc])
+                new_all_miles.append(0)
+                new_all_hours.append(0)
+            new_all_miles[-1] = new_all_miles[-1] + edge.length
+            new_all_hours[-1] = new_all_hours[-1] + new_edge_time + new_loc_time 
+            new_all_visit[-1].append(new_loc)
+            new_hours = sum(all_hours) + new_edge_time + new_loc_time
+            curr_preference = curr_eval_score * sum(all_hours)
             new_preference = curr_preference + edge.preference + locations[new_loc].preference
             new_eval_score = new_preference / new_hours
-            new_visit = curr_visit + [new_loc]
-            heapq.heappush(frontier, (new_eval_score, new_visit, new_miles, new_hours))
+
+            heapq.heappush(frontier, (new_eval_score, new_all_visit, new_all_miles, new_all_hours,prev_pref,new_visited))
 
 
     if len(RouteDistance) == 0:
