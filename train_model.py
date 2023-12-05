@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 import joblib
+import sys
+
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
 
@@ -10,6 +12,8 @@ def sigmoid_derivative(x):
 
 # Load and preprocess the dataset
 file_path = 'data_medium.txt'  # Update with the correct path
+if len(sys.argv) > 1:
+    file_path = sys.argv[1].strip()
 data = pd.read_csv(file_path, delimiter='\t', encoding='utf-8').values
 X = data[:, 1:]  # Features
 y = data[:, 0].reshape(-1, 1)  # Target
