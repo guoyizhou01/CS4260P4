@@ -38,7 +38,8 @@ def weights_to_prediction(input):
 
     # Now use input_data_standardized for prediction
     predicted_output = predict(input_data_standardized)
-    print("Predicted Output:", predicted_output[0][0])
+    # print("Predicted Output:", predicted_output[0][0])
+    return predicted_output[0][0]
 
 if __name__ == '__main__':
     # Example prediction
