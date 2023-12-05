@@ -32,7 +32,7 @@ class Location:
 	def get_theme(self,theme):
 		if not (theme in self.themes.keys()):
 			return 0
-		return themes[theme]
+		return self.themes[theme]
 
 
 class Edge:
