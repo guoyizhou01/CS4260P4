@@ -38,13 +38,17 @@ if __name__ == '__main__':
 	resultFile = sys.argv[3].strip()
 	startLoc = sys.argv[4].strip()
 	AttrFile = 'attractions.csv'
-	days = int(input('Please enter days of roadtrip: ').strip())
-	drivingHour = int(input('Please enter maximum driving hours per day: ').strip())
-	x_mph = int(input('Please enter your expected driving speed: ').strip())
+	days = int(input('Please enter days of road trip: \n').strip())
+	print(days)
+	drivingHour = int(input('Please enter maximum hours per day: \n').strip())
+	print(drivingHour)
+	x_mph = int(input('Please enter your expected driving speed: \n').strip())
+	print(x_mph)
 
 	preferences = []
 	while len(preferences) < 10:
-		curr_pref = input('Please enter your theme preference (%d/10 entered), enter stop to auto-fill the rest: '%len(preferences))
+		curr_pref = input('Please enter your theme preference from most preferred first (%d/10 entered), enter stop to auto-fill the rest: \n'%len(preferences))
+		print(curr_pref)
 		curr_pref = curr_pref.strip().split()
 		stopLoop = False
 		i = 0
@@ -52,10 +56,10 @@ if __name__ == '__main__':
 			if single.strip().lower() == 'stop':
 				stopLoop = True
 				break
-			preferences.append([single.strip(),10-i//2]) 
+			preferences.append([single.strip().lower(),10-i//2]) 
 		if stopLoop:
 			break
-	print(preferences)
+	# print(preferences)
 
 	RoadTrip(startLoc, LocFile, EdgeFile, AttrFile, days, drivingHour, x_mph, preferences, resultFile)
 
