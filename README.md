@@ -18,6 +18,14 @@ numpy, pandas, joblib, scikit-learn
 
 ## Usage
 
+To train the neural network with a new model (it is recommended to backup the old model), use
+
+```
+python3 train_model.py DataFile
+```
+
+To use the search algorithm, use
+
 ```
 python3 main.py LocationFile EdgeFile OutputFile StartLocation 
 ```
