@@ -4,6 +4,7 @@ import time
 import utility
 import predict_model
 import copy
+import random
 
 DIST_COEFF = 1.0
 RouteDistance = []
@@ -20,13 +21,12 @@ TempStorage = ""
 
 def convert_scale(number):
     if number == 0:
-        return 3
+        return 1+3*random.random()
     elif number == 1:
-        return 6
-    elif number == 2:
-        return 8
+        return 5
     else:
-        return 10
+        return min(10,number+5)
+
 
 def time_at_location(location,init_pref,prev_pref):
     # day_n_preference = max((day_n-1_preference + initial_preference)/2 - day_n-1_visit_number**2, 0)
@@ -44,57 +44,11 @@ def time_at_location(location,init_pref,prev_pref):
     prev_pref = new_pref_list
     return (prediction ** 2)*2
 
+
 def distance(locationA, locationB):
     return (math.sqrt(((locationA.latitude - locationB.latitude) * 69) ** 2 \
                       + ((locationA.longitude - locationB.longitude) * 54.6) ** 2)) * DIST_COEFF
 
-def total_preference(roadtrip, locations, edges):
-    total_pref = 0.000
-
-    # Add up the preferences of the locations
-    for line in roadtrip:
-        for i in range(len(line-1)):
-            total_pref += locations[line[i]].preference
-
-    # Add up the preferences of the edges
-    # for i in range(len(roadtrip) - 1):
-    # 	current_loc, next_loc = roadtrip[i], roadtrip[i + 1]
-
-    # 	# Find the correct edge and add its preference
-    # 	for edge in edges[current_loc]:
-    # 		if edge.other_city(current_loc) == next_loc:
-    # 			total_pref += edge.preference
-    # 			break
-
-    # Since this is a round-trip, the start location only have one preference value
-    # total_pref = total_pref - locations[roadtrip[0]].preference
-    return total_pref
-
-
-def time_estimate(roadtrip, locations, edges):
-	total_time = 0
-	# Iterate through the road trip, assuming roadtrip is a list of location names in order
-	for i, location_name in enumerate(roadtrip):
-		# Add time spent at each location
-		total_time += time_at_location(locations[location_name].preference)
-
-		# Add time spent on each edge, if it's not the last location
-		if i < len(roadtrip) - 1:
-			next_location = roadtrip[i + 1]
-
-			# Finding the correct edge object
-			edge_obj = None
-			for edge in edges[location_name]:
-				if edge.other_city(location_name) == next_location:
-					edge_obj = edge
-					break
-
-			# Add base travel time
-			total_time += edge_obj.length / 65
-			# Add additional time due to edge preference
-			total_time += time_at_location(edge_obj.preference)
-	total_time = total_time - time_at_location(locations[roadtrip[0]].preference)
-	return total_time
 
 def is_in_matrix(matrix,a):
     count = 0
@@ -149,12 +103,14 @@ def route_search(startLoc, locations, edges, days, drivingHour, x_mph, preferenc
         if len(curr_visit) > days:
             continue
 
+        if distance(locations[curr_loc],locations[startLoc])/x_mph*1.3+sum(all_hours) >days*drivingHour:
+            continue 
 
         # TODO: check if a valid path is found and check user prompt for anytime search
         # TODO: Modify output!
 
         if curr_loc == startLoc and len(curr_visit[0]) > 1:
-            if len(curr_visit) < max(days/2,days-2) or sum(all_hours) < days*drivingHour*0.7:
+            if len(curr_visit) < max(days*0.7,days-2) or sum(all_hours) < len(curr_visit)*drivingHour*0.6:
                 continue
             Solution_Label += 1
             prev_pref = init_pref
@@ -166,6 +122,7 @@ def route_search(startLoc, locations, edges, days, drivingHour, x_mph, preferenc
             pathCost = 0
 
             totalTimeCost = 0
+            totalThemes = 0
 
             file.write("Solution label: {}  {}  max_days:{}  max_hours_per_day:{}  mph:{}\n".format(Solution_Label,curr_visit[0][0],days,drivingHour,x_mph))
             print("Solution label: {}  {}  max_days:{}  max_hours_per_day:{}  mph:{}".format(Solution_Label,curr_visit[0][0],days,drivingHour,x_mph))
@@ -183,13 +140,15 @@ def route_search(startLoc, locations, edges, days, drivingHour, x_mph, preferenc
 
                             tempEdgeLength.append(a)
                             tempEdgeName.append(a)
+                            for pair in init_pref:
+                                totalThemes += locations[curr_visit[day-1][i+1]].get_theme(pair[0])
 
                             pathCost += a.length
                             # loc = distance(locations[curr_visit[day-1][i+1]],locations[curr_visit[day-1][-1]])
                             loc_time = time_at_location(locations[curr_visit[day-1][i+1]],init_pref,prev_pref)
-                            file.write("    {}  {:<15} {:<15} {:<50}   {:>5.2f}hours  {:>5.2f}hours\n".format(i+1,curr_visit[day-1][i],curr_visit[day-1][i+1],a.name,\
+                            file.write("    {}  {:<18} {:<18} {:<60}   {:>5.2f}hours  {:>5.2f}hours\n".format(i+1,curr_visit[day-1][i],curr_visit[day-1][i+1],a.name,\
                                 (a.length/x_mph),loc_time))
-                            print("    {}  {:<15} {:<15} {:<50}   {:>5.2f}hours  {:>5.2f}hours".format(i+1,curr_visit[day-1][i],curr_visit[day-1][i+1],a.name,\
+                            print("    {}  {:<18} {:<18} {:<60}   {:>5.2f}hours  {:>5.2f}hours".format(i+1,curr_visit[day-1][i],curr_visit[day-1][i+1],a.name,\
                                 (a.length/x_mph),loc_time))
                             totalTimeCost += (a.length/x_mph)+loc_time
                             break
@@ -197,11 +156,12 @@ def route_search(startLoc, locations, edges, days, drivingHour, x_mph, preferenc
             
             # totalPreference = total_preference(curr_visit, locations, edges)
             # totalTimeCost = time_estimate(curr_visit, locations, edges)
-            file.write("{}  {:.1f}miles  {} days  {:.2f}hours\n".format(curr_visit[0],pathCost,len(curr_visit),totalTimeCost))
-            print("{}  {:.1f}miles  {} days  {:.2f}hours".format(curr_visit[0],pathCost,len(curr_visit),totalTimeCost))
+            file.write("{:.1f} total miles  {} days  {:.2f} total hours  Total Themes satisfied: {} \n".format(pathCost,len(curr_visit),totalTimeCost,totalThemes))
+            print("{:.1f} total miles  {} days  {:.2f} total hours  Total Themes satisfied: {} ".format(pathCost,len(curr_visit),totalTimeCost,totalThemes))
 
             # user_start_time = time.time()
             UserInput = input("Do you want to find a alternate route? Y/N \n")
+            print(UserInput)
             # user_end_time = time.time()
             # elapsed_time = user_end_time - user_start_time
             # sumUserTime += elapsed_time
@@ -259,24 +219,12 @@ def route_search(startLoc, locations, edges, days, drivingHour, x_mph, preferenc
             new_hours = sum(all_hours) + new_edge_time + new_loc_time
             curr_preference = curr_eval_score * sum(all_hours)
             new_preference = curr_preference + edge.preference + locations[new_loc].preference
-            new_eval_score = new_preference / new_hours
+            new_eval_score = curr_eval_score - (new_loc_time/2)**2
 
             heapq.heappush(frontier, (new_eval_score, new_all_visit, new_all_miles, new_all_hours,prev_pref,new_visited))
 
 
     if len(RouteDistance) == 0:
         file.write("No route found!\n")
-        # end_time = time.time()
-        # elapsed_time = end_time - start_time - sumUserTime
-        # file.write("\nElapsed search time: {:.4f} seconds".format(elapsed_time))
         return
-    # Standard Output
 
-
-    # ADD  a list of locations that were visited (checked for goalness) across the entirety of the anytime search (with duplicates removed).!!!!!!!!!!!!!!!!
-    # file.write("Locations visited:\n")
-    # for loc in goalness.keys():
-        # file.write(loc+"  ")
-    # end_time = time.time()
-    # elapsed_time = end_time - start_time - sumUserTime
-    # file.write("\nElapsed search time: {:.4f} seconds".format(elapsed_time))
