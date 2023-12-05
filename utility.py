@@ -83,7 +83,7 @@ def read_attr(AttrFile,all_locations):
 			if not (lines[1].strip() in all_locations.keys()):
 				continue
 			for theme in lines[3].strip().split(','):
-				all_locations[lines[1].strip()].add_theme(theme.strip().replace(" ",""))
+				all_locations[lines[1].strip()].add_theme(theme.strip().lower().replace(" ",""))
 	return all_locations
 
 
