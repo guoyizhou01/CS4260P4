@@ -1,4 +1,4 @@
-# CS5260 Final Project
+# CS5260 Final Project - AI Roadtrip Planner
 
 ## Group members
 
